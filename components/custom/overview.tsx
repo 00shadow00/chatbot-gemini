@@ -1,48 +1,39 @@
-import { motion } from "framer-motion";
-import Link from "next/link";
+"use client";
 
-import { LogoGoogle, MessageIcon, VercelIcon } from "./icons";
+import { motion } from "framer-motion";
+import { MessageIcon } from "./icons";
 
 export const Overview = () => {
   return (
     <motion.div
       key="overview"
-      className="max-w-[500px] mt-20 mx-4 md:mx-0"
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.98 }}
-      transition={{ delay: 0.5 }}
+      className="w-full max-w-[500px] mt-20 px-4 md:px-0"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 10 }}
+      transition={{ duration: 0.3 }}
     >
-      <div className="border-none bg-muted/50 rounded-2xl p-6 flex flex-col gap-4 text-zinc-500 text-sm dark:text-zinc-400 dark:border-zinc-700">
-        <p className="flex flex-row justify-center gap-4 items-center text-zinc-900 dark:text-zinc-50">
-          <VercelIcon />
-          <span>+</span>
-          <MessageIcon />
-        </p>
-        <p>
-          This is an open source Chatbot template powered by the Google Gemini
-          model built with Next.js and the AI SDK by Vercel. It uses the{" "}
-          <code className="rounded-sm bg-muted-foreground/15 px-1.5 py-0.5">
-            streamText
-          </code>{" "}
-          function in the server and the{" "}
-          <code className="rounded-sm bg-muted-foreground/15 px-1.5 py-0.5">
-            useChat
-          </code>{" "}
-          hook on the client to create a seamless chat experience.
-        </p>
-        <p>
-          {" "}
-          You can learn more about the AI SDK by visiting the{" "}
-          <Link
-            className="text-blue-500 dark:text-blue-400"
-            href="https://sdk.vercel.ai/docs"
-            target="_blank"
-          >
-            Docs
-          </Link>
-          .
-        </p>
+      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm">
+        <div className="flex flex-col items-center text-center gap-4">
+          <div className="flex size-12 items-center justify-center rounded-full bg-blue-500 text-white">
+            <MessageIcon />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+              Hi! 👋
+            </h1>
+
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              How can I help you today?
+            </p>
+          </div>
+
+          <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
+            Ask me anything, get information, or let me help you with your
+            travel plans.
+          </p>
+        </div>
       </div>
     </motion.div>
   );
