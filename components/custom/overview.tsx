@@ -1,39 +1,49 @@
-"use client";
-
 import { motion } from "framer-motion";
-import { MessageIcon } from "./icons";
+import Link from "next/link";
+
+import { MessageIcon, VercelIcon } from "./icons";
 
 export const Overview = () => {
   return (
     <motion.div
       key="overview"
-      className="w-full max-w-[500px] mt-20 px-4 md:px-0"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 10 }}
-      transition={{ duration: 0.3 }}
+      className="mx-4 mt-20 max-w-[500px] md:mx-0"
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.98 }}
+      transition={{ delay: 0.5 }}
     >
-      <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm">
-        <div className="flex flex-col items-center text-center gap-4">
-          <div className="flex size-12 items-center justify-center rounded-full bg-blue-500 text-white">
-            <MessageIcon />
-          </div>
+      <div className="flex flex-col gap-4 rounded-2xl border-none bg-muted/50 p-6 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+        <p className="flex flex-row items-center justify-center gap-4 text-zinc-900 dark:text-zinc-50">
+          <VercelIcon />
+          <span>+</span>
+          <MessageIcon />
+        </p>
 
-          <div className="flex flex-col gap-2">
-            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-              Hi! 👋
-            </h1>
+        <p>
+          This is an open source Chatbot template powered by the Google Gemini
+          model built with Next.js and the AI SDK by Vercel. It uses the{" "}
+          <code className="rounded-sm bg-muted-foreground/15 px-1.5 py-0.5">
+            streamText
+          </code>{" "}
+          function in the server and the{" "}
+          <code className="rounded-sm bg-muted-foreground/15 px-1.5 py-0.5">
+            useChat
+          </code>{" "}
+          hook on the client to create a seamless chat experience.
+        </p>
 
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              How can I help you today?
-            </p>
-          </div>
-
-          <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            Ask me anything, get information, or let me help you with your
-            travel plans.
-          </p>
-        </div>
+        <p>
+          You can learn more about the AI SDK by visiting the{" "}
+          <Link
+            className="text-blue-500 dark:text-blue-400"
+            href="https://sdk.vercel.ai/docs"
+            target="_blank"
+          >
+            Docs
+          </Link>
+          .
+        </p>
       </div>
     </motion.div>
   );
