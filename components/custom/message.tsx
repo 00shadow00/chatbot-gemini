@@ -3,7 +3,6 @@
 import { Attachment, ToolInvocation } from "ai";
 import { motion } from "framer-motion";
 import { ReactNode } from "react";
-import { Streamdown } from "streamdown";
 
 import { BotIcon, UserIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
@@ -31,7 +30,7 @@ export const Message = ({
 }) => {
   return (
     <motion.div
-      className={`flex flex-row gap-4 px-4 w-full md:w-[500px] md:px-0 first-of-type:pt-20`}
+      className="flex flex-row gap-4 px-4 w-full md:w-[500px] md:px-0 first-of-type:pt-20"
       initial={{ y: 5, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
     >
@@ -40,13 +39,13 @@ export const Message = ({
       </div>
 
       <div className="flex flex-col gap-2 w-full">
-        {content && typeof content === "string" && (
-          <div className="text-zinc-800 dark:text-zinc-300 flex flex-col gap-4">
-            <Streamdown>{content}</Streamdown>
+        {typeof content === "string" && content.length > 0 && (
+          <div className="text-zinc-800 dark:text-zinc-300 whitespace-pre-wrap break-words">
+            {content}
           </div>
         )}
 
-        {toolInvocations && (
+        {toolInvocations && toolInvocations.length > 0 && (
           <div className="flex flex-col gap-4">
             {toolInvocations.map((toolInvocation) => {
               const { toolName, toolCallId, state } = toolInvocation;
@@ -75,39 +74,44 @@ export const Message = ({
                     ) : toolName === "verifyPayment" ? (
                       <VerifyPayment result={result} />
                     ) : (
-                      <div>{JSON.stringify(result, null, 2)}</div>
+                      <div className="whitespace-pre-wrap">
+                        {JSON.stringify(result, null, 2)}
+                      </div>
                     )}
                   </div>
                 );
-              } else {
-                return (
-                  <div key={toolCallId} className="skeleton">
-                    {toolName === "getWeather" ? (
-                      <Weather />
-                    ) : toolName === "displayFlightStatus" ? (
-                      <FlightStatus />
-                    ) : toolName === "searchFlights" ? (
-                      <ListFlights chatId={chatId} />
-                    ) : toolName === "selectSeats" ? (
-                      <SelectSeats chatId={chatId} />
-                    ) : toolName === "createReservation" ? (
-                      <CreateReservation />
-                    ) : toolName === "authorizePayment" ? (
-                      <AuthorizePayment />
-                    ) : toolName === "displayBoardingPass" ? (
-                      <DisplayBoardingPass />
-                    ) : null}
-                  </div>
-                );
               }
+
+              return (
+                <div key={toolCallId} className="skeleton">
+                  {toolName === "getWeather" ? (
+                    <Weather />
+                  ) : toolName === "displayFlightStatus" ? (
+                    <FlightStatus />
+                  ) : toolName === "searchFlights" ? (
+                    <ListFlights chatId={chatId} />
+                  ) : toolName === "selectSeats" ? (
+                    <SelectSeats chatId={chatId} />
+                  ) : toolName === "createReservation" ? (
+                    <CreateReservation />
+                  ) : toolName === "authorizePayment" ? (
+                    <AuthorizePayment />
+                  ) : toolName === "displayBoardingPass" ? (
+                    <DisplayBoardingPass />
+                  ) : null}
+                </div>
+              );
             })}
           </div>
         )}
 
-        {attachments && (
+        {attachments && attachments.length > 0 && (
           <div className="flex flex-row gap-2">
             {attachments.map((attachment) => (
-              <PreviewAttachment key={attachment.url} attachment={attachment} />
+              <PreviewAttachment
+                key={attachment.url}
+                attachment={attachment}
+              />
             ))}
           </div>
         )}
