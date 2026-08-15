@@ -70,6 +70,7 @@ export async function POST(request: Request) {
           return weatherData;
         },
       },
+
       displayFlightStatus: {
         description: "Display the status of a flight",
         parameters: z.object({
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
           return flightStatus;
         },
       },
+
       searchFlights: {
         description: "Search for flights based on the given parameters",
         parameters: z.object({
@@ -100,6 +102,7 @@ export async function POST(request: Request) {
           return results;
         },
       },
+
       selectSeats: {
         description: "Select seats for a flight",
         parameters: z.object({
@@ -110,6 +113,7 @@ export async function POST(request: Request) {
           return seats;
         },
       },
+
       createReservation: {
         description: "Display pending reservation details",
         parameters: z.object({
@@ -145,13 +149,14 @@ export async function POST(request: Request) {
             });
 
             return { id, ...props, totalPriceInUSD };
-          } else {
-            return {
-              error: "User is not signed in to perform this action!",
-            };
           }
+
+          return {
+            error: "User is not signed in to perform this action!",
+          };
         },
       },
+
       authorizePayment: {
         description:
           "User will enter credentials to authorize payment, wait for user to repond when they are done",
@@ -164,6 +169,7 @@ export async function POST(request: Request) {
           return { reservationId };
         },
       },
+
       verifyPayment: {
         description: "Verify payment status",
         parameters: z.object({
@@ -172,15 +178,18 @@ export async function POST(request: Request) {
             .describe("Unique identifier for the reservation"),
         }),
         execute: async ({ reservationId }) => {
-          const reservation = await getReservationById({ id: reservationId });
+          const reservation = await getReservationById({
+            id: reservationId,
+          });
 
           if (reservation.hasCompletedPayment) {
             return { hasCompletedPayment: true };
-          } else {
-            return { hasCompletedPayment: false };
           }
+
+          return { hasCompletedPayment: false };
         },
       },
+
       displayBoardingPass: {
         description: "Display a boarding pass",
         parameters: z.object({
@@ -214,6 +223,7 @@ export async function POST(request: Request) {
         },
       },
     },
+
     onFinish: async ({ responseMessages }) => {
       if (session.user && session.user.id) {
         try {
@@ -222,11 +232,21 @@ export async function POST(request: Request) {
             messages: [...coreMessages, ...responseMessages],
             userId: session.user.id,
           });
+
+          console.log("✅ Chat saved successfully:", id);
         } catch (error) {
-          console.error("Failed to save chat");
+          console.error("❌ Failed to save chat:", error);
+
+          if (error instanceof Error) {
+            console.error("Save chat error message:", error.message);
+            console.error("Save chat error stack:", error.stack);
+          } else {
+            console.error("Save chat unknown error:", error);
+          }
         }
       }
     },
+
     experimental_telemetry: {
       isEnabled: true,
       functionId: "stream-text",
@@ -261,6 +281,8 @@ export async function DELETE(request: Request) {
 
     return new Response("Chat deleted", { status: 200 });
   } catch (error) {
+    console.error("Failed to delete chat:", error);
+
     return new Response("An error occurred while processing your request", {
       status: 500,
     });
