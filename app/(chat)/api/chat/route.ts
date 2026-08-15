@@ -23,6 +23,9 @@ export async function POST(request: Request) {
       });
     }
 
+    // TypeScript-safe user ID
+    const userId = session.user.id;
+
     const coreMessages = convertToCoreMessages(messages).filter(
       (message) =>
         typeof message.content === "string" &&
@@ -47,7 +50,7 @@ export async function POST(request: Request) {
           await saveChat({
             id,
             messages: [...coreMessages, ...responseMessages],
-            userId: session.user.id,
+            userId,
           });
 
           console.log("✅ Chat saved successfully:", id);
