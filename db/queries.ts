@@ -7,9 +7,6 @@ import postgres from "postgres";
 
 import { user, chat, User, reservation } from "./schema";
 
-// Optionally, if not using email/pass login, you can
-// use the Drizzle adapter for Auth.js / NextAuth
-// https://authjs.dev/reference/adapter/drizzle
 let client = postgres(`${process.env.POSTGRES_URL!}?sslmode=require`);
 let db = drizzle(client);
 
@@ -23,8 +20,8 @@ export async function getUser(email: string): Promise<Array<User>> {
 }
 
 export async function createUser(email: string, password: string) {
-  let salt = genSaltSync(10);
-  let hash = hashSync(password, salt);
+  const salt = genSaltSync(10);
+  const hash = hashSync(password, salt);
 
   try {
     return await db.insert(user).values({ email, password: hash });
@@ -44,7 +41,10 @@ export async function saveChat({
   userId: string;
 }) {
   try {
-    const selectedChats = await db.select().from(chat).where(eq(chat.id, id));
+    const selectedChats = await db
+      .select()
+      .from(chat)
+      .where(eq(chat.id, id));
 
     if (selectedChats.length > 0) {
       return await db
@@ -55,9 +55,17 @@ export async function saveChat({
         .where(eq(chat.id, id));
     }
 
+    const firstUserMessage = messages.find(
+      (message: any) => message.role === "user",
+    );
+
+    const title =
+      firstUserMessage?.content?.toString().slice(0, 100) || "New Chat";
+
     return await db.insert(chat).values({
       id,
       createdAt: new Date(),
+      title,
       messages: JSON.stringify(messages),
       userId,
     });
@@ -91,7 +99,11 @@ export async function getChatsByUserId({ id }: { id: string }) {
 
 export async function getChatById({ id }: { id: string }) {
   try {
-    const [selectedChat] = await db.select().from(chat).where(eq(chat.id, id));
+    const [selectedChat] = await db
+      .select()
+      .from(chat)
+      .where(eq(chat.id, id));
+
     return selectedChat;
   } catch (error) {
     console.error("Failed to get chat by id from database");
@@ -129,7 +141,7 @@ export async function getReservationById({ id }: { id: string }) {
 export async function updateReservation({
   id,
   hasCompletedPayment,
-}: {
+  }: {
   id: string;
   hasCompletedPayment: boolean;
 }) {
