@@ -7,8 +7,8 @@ import postgres from "postgres";
 
 import { user, chat, User, reservation } from "./schema";
 
-let client = postgres(`${process.env.POSTGRES_URL!}?sslmode=require`);
-let db = drizzle(client);
+const client = postgres(`${process.env.POSTGRES_URL!}?sslmode=require`);
+const db = drizzle(client);
 
 export async function getUser(email: string): Promise<Array<User>> {
   try {
@@ -24,7 +24,10 @@ export async function createUser(email: string, password: string) {
   const hash = hashSync(password, salt);
 
   try {
-    return await db.insert(user).values({ email, password: hash });
+    return await db.insert(user).values({
+      email,
+      password: hash,
+    });
   } catch (error) {
     console.error("Failed to create user in database");
     throw error;
@@ -41,10 +44,60 @@ export async function saveChat({
   userId: string;
 }) {
   try {
+    /*
+    |--------------------------------------------------------------------------
+    | Find the first actual user message
+    |--------------------------------------------------------------------------
+    */
+
+    const firstUserMessage = messages.find(
+      (message: any) =>
+        message.role === "user" &&
+        typeof message.content === "string" &&
+        message.content.trim().length > 0,
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Don't create empty chats
+    |--------------------------------------------------------------------------
+    */
+
+    if (!firstUserMessage) {
+      console.log("⏭️ Skipping empty chat:", id);
+
+      return null;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Generate title from first user message
+    |--------------------------------------------------------------------------
+    */
+
+    const title =
+      firstUserMessage.content
+        .toString()
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 100) || "New Chat";
+
+    /*
+    |--------------------------------------------------------------------------
+    | Check if chat already exists
+    |--------------------------------------------------------------------------
+    */
+
     const selectedChats = await db
       .select()
       .from(chat)
       .where(eq(chat.id, id));
+
+    /*
+    |--------------------------------------------------------------------------
+    | Update existing chat
+    |--------------------------------------------------------------------------
+    */
 
     if (selectedChats.length > 0) {
       return await db
@@ -55,12 +108,11 @@ export async function saveChat({
         .where(eq(chat.id, id));
     }
 
-    const firstUserMessage = messages.find(
-      (message: any) => message.role === "user",
-    );
-
-    const title =
-      firstUserMessage?.content?.toString().slice(0, 100) || "New Chat";
+    /*
+    |--------------------------------------------------------------------------
+    | Create new chat
+    |--------------------------------------------------------------------------
+    */
 
     return await db.insert(chat).values({
       id,
@@ -142,8 +194,8 @@ export async function updateReservation({
   id,
   hasCompletedPayment,
   }: {
-  id: string;
-  hasCompletedPayment: boolean;
+    id: string;
+    hasCompletedPayment: boolean;
 }) {
   return await db
     .update(reservation)
