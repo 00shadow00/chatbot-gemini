@@ -2,6 +2,7 @@
 
 import { Attachment, ToolInvocation } from "ai";
 import { motion } from "framer-motion";
+import { Check, Copy } from "lucide-react";
 import { ReactNode, useState } from "react";
 
 import { AuthorizePayment } from "../flights/authorize-payment";
@@ -11,29 +12,17 @@ import { FlightStatus } from "../flights/flight-status";
 import { ListFlights } from "../flights/list-flights";
 import { SelectSeats } from "../flights/select-seats";
 import { VerifyPayment } from "../flights/verify-payment";
+
 import { BotIcon, UserIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
 import { Weather } from "./weather";
 
-/*
-|--------------------------------------------------------------------------
-| CODE BLOCK
-|--------------------------------------------------------------------------
-*/
-
-function CodeBlock({
-  code,
-  language,
-}: {
-  code: string;
-  language?: string;
-}) {
+function CodeBlock({ code, language }: { code: string; language?: string }) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = async () => {
+  const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(code);
-
       setCopied(true);
 
       setTimeout(() => {
@@ -45,182 +34,69 @@ function CodeBlock({
   };
 
   return (
-    <div className="my-3 w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-950 shadow-sm dark:border-zinc-800">
-      {/* Code Header */}
+    <div className="my-3 overflow-hidden rounded-xl border border-zinc-200 bg-zinc-950 dark:border-zinc-800">
       <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-3 py-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+        <span className="text-xs font-medium text-zinc-400">
           {language || "code"}
         </span>
 
         <button
           type="button"
-          onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white"
+          onClick={copyCode}
+          className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-white"
         >
           {copied ? (
             <>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M20 6 9 17l-5-5" />
-              </svg>
-
+              <Check className="size-3.5" />
               Copied
             </>
           ) : (
             <>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <rect
-                  width="13"
-                  height="13"
-                  x="9"
-                  y="9"
-                  rx="2"
-                />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-
+              <Copy className="size-3.5" />
               Copy
             </>
           )}
         </button>
       </div>
 
-      {/* Code */}
-      <pre className="overflow-x-auto p-4 text-[13px] leading-6 text-zinc-100">
+      <pre className="overflow-x-auto p-4 text-sm leading-6 text-zinc-100">
         <code>{code}</code>
       </pre>
     </div>
   );
 }
 
-/*
-|--------------------------------------------------------------------------
-| MESSAGE CONTENT
-|--------------------------------------------------------------------------
-*/
-
-function MessageContent({
-  content,
-  role,
-}: {
-  content: string;
-  role: string;
-}) {
-  /*
-   * Detect fenced code blocks:
-   *
-   * ```javascript
-   * const hello = "world";
-   * ```
-   */
-
+function renderContent(content: string) {
   const parts = content.split(/(```[\s\S]*?```)/g);
 
-  return (
-    <div
-      className={
-        role === "user"
-          ? "whitespace-pre-wrap break-words text-sm leading-6"
-          : "whitespace-pre-wrap break-words text-sm leading-6"
-      }
-    >
-      {parts.map((part, index) => {
-        if (part.startsWith("```") && part.endsWith("```")) {
-          const codeContent = part.slice(3, -3);
+  return parts.map((part, index) => {
+    if (!part.startsWith("```")) {
+      return (
+        <span key={index} className="whitespace-pre-wrap break-words">
+          {part}
+        </span>
+      );
+    }
 
-          const lines = codeContent.split("\n");
+    const match = part.match(/^```([a-zA-Z0-9_+-]*)\n?([\s\S]*?)```$/);
 
-          let language = "";
+    if (!match) {
+      return (
+        <pre
+          key={index}
+          className="my-3 overflow-x-auto rounded-xl bg-zinc-950 p-4 text-sm text-zinc-100"
+        >
+          <code>{part.replace(/```/g, "")}</code>
+        </pre>
+      );
+    }
 
-          if (lines.length > 0) {
-            const firstLine = lines[0].trim();
+    const language = match[1] || "code";
+    const code = match[2].replace(/\n$/, "");
 
-            /*
-             * If the first line looks like a language name,
-             * remove it from the actual code.
-             */
-            if (
-              firstLine &&
-              /^[a-zA-Z0-9+#.-]+$/.test(firstLine) &&
-              lines.length > 1
-            ) {
-              language = firstLine;
-              lines.shift();
-            }
-          }
-
-          const code = lines.join("\n").replace(/^\n|\n$/g, "");
-
-          return (
-            <CodeBlock
-              key={index}
-              code={code}
-              language={language}
-            />
-          );
-        }
-
-        /*
-         * Empty text parts are ignored.
-         */
-        if (!part) {
-          return null;
-        }
-
-        /*
-         * Simple inline-code styling.
-         *
-         * Example:
-         * Use `npm install`
-         */
-
-        const inlineParts = part.split(/(`[^`]+`)/g);
-
-        return (
-          <span key={index}>
-            {inlineParts.map((text, inlineIndex) => {
-              if (
-                text.startsWith("`") &&
-                text.endsWith("`") &&
-                text.length > 2
-              ) {
-                return (
-                  <code
-                    key={inlineIndex}
-                    className="mx-0.5 rounded-md border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 font-mono text-[12px] text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
-                  >
-                    {text.slice(1, -1)}
-                  </code>
-                );
-              }
-
-              return <span key={inlineIndex}>{text}</span>;
-            })}
-          </span>
-        );
-      })}
-    </div>
-  );
+    return <CodeBlock key={index} code={code} language={language} />;
+  });
 }
-
-/*
-|--------------------------------------------------------------------------
-| MESSAGE
-|--------------------------------------------------------------------------
-*/
 
 export const Message = ({
   chatId,
@@ -228,39 +104,38 @@ export const Message = ({
   content,
   toolInvocations,
   attachments,
+  isLoading = false,
 }: {
   chatId: string;
   role: string;
   content: string | ReactNode;
   toolInvocations: Array<ToolInvocation> | undefined;
   attachments?: Array<Attachment>;
+  isLoading?: boolean;
 }) => {
-  const isUser = role === "user";
   const isAssistant = role === "assistant";
+  const isUser = role === "user";
 
   return (
     <motion.div
-      className={`flex w-full px-4 md:w-[700px] md:px-0 ${
-        isUser ? "justify-end" : "justify-start"
+      className={`w-full px-4 md:w-[700px] md:px-0 ${
+        isUser ? "flex justify-end" : "flex justify-start"
       }`}
       initial={{ y: 8, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{
-        duration: 0.2,
-        ease: "easeOut",
-      }}
+      transition={{ duration: 0.2 }}
     >
       <div
-        className={`flex max-w-[92%] gap-3 md:max-w-[85%] ${
+        className={`flex max-w-[95%] gap-3 md:max-w-[85%] ${
           isUser ? "flex-row-reverse" : "flex-row"
         }`}
       >
         {/* Avatar */}
         <div
-          className={`mt-1 flex size-8 shrink-0 items-center justify-center rounded-full border shadow-sm ${
-            isUser
-              ? "border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-              : "border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+          className={`flex size-8 shrink-0 items-center justify-center rounded-full border ${
+            isAssistant
+              ? "border-zinc-200 bg-white text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+              : "border-zinc-800 bg-zinc-900 text-white dark:border-zinc-700"
           }`}
         >
           {isAssistant ? (
@@ -270,42 +145,52 @@ export const Message = ({
           )}
         </div>
 
-        {/* Message Area */}
+        {/* Message */}
         <div
           className={`flex min-w-0 flex-col ${
             isUser ? "items-end" : "items-start"
           }`}
         >
-          {/* Role label */}
-          <div
-            className={`mb-1 px-1 text-[11px] font-medium ${
-              isUser
-                ? "text-zinc-400"
-                : "text-zinc-500 dark:text-zinc-400"
-            }`}
-          >
-            {isUser ? "You" : "AI"}
+          {/* Name */}
+          <div className="mb-1 px-1 text-[11px] font-medium text-zinc-400">
+            {isAssistant ? "AI Assistant" : "You"}
           </div>
 
-          {/* Message Bubble */}
-          {typeof content === "string" && content.length > 0 && (
-            <div
-              className={`rounded-2xl px-4 py-3 shadow-sm ${
-                isUser
-                  ? "rounded-tr-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                  : "rounded-tl-md border border-zinc-200 bg-white text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
-              }`}
-            >
-              <MessageContent
-                content={content}
-                role={role}
-              />
-            </div>
-          )}
+          {/* Bubble */}
+          <div
+            className={`rounded-2xl px-4 py-3 text-sm leading-6 ${
+              isUser
+                ? "rounded-tr-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                : "rounded-tl-md border border-zinc-200 bg-zinc-50 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200"
+            }`}
+          >
+            {typeof content === "string" && content.length > 0 && (
+              <div className="min-w-0">
+                {renderContent(content)}
+              </div>
+            )}
+
+            {/* AI typing indicator */}
+            {isAssistant &&
+              isLoading &&
+              (!content || (typeof content === "string" && content.length === 0)) && (
+                <div className="flex items-center gap-1.5 py-1">
+                  <span className="text-xs text-zinc-400">
+                    AI is thinking
+                  </span>
+
+                  <span className="flex gap-1">
+                    <span className="size-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
+                    <span className="size-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
+                    <span className="size-1.5 animate-bounce rounded-full bg-zinc-400" />
+                  </span>
+                </div>
+              )}
+          </div>
 
           {/* Attachments */}
           {attachments && attachments.length > 0 && (
-            <div className="mt-2 flex flex-row flex-wrap gap-2">
+            <div className="mt-2 flex flex-row gap-2">
               {attachments.map((attachment) => (
                 <PreviewAttachment
                   key={attachment.url}
@@ -315,35 +200,21 @@ export const Message = ({
             </div>
           )}
 
-          {/* Tool Invocations */}
+          {/* Tools */}
           {toolInvocations && toolInvocations.length > 0 && (
             <div className="mt-3 flex w-full flex-col gap-4">
               {toolInvocations.map((toolInvocation) => {
-                const {
-                  toolName,
-                  toolCallId,
-                  state,
-                } = toolInvocation;
+                const { toolName, toolCallId, state } = toolInvocation;
 
-                /*
-                 * Tool completed
-                 */
                 if (state === "result") {
                   const { result } = toolInvocation;
 
                   return (
-                    <div
-                      key={toolCallId}
-                      className="w-full"
-                    >
+                    <div key={toolCallId} className="w-full">
                       {toolName === "getWeather" ? (
-                        <Weather
-                          weatherAtLocation={result}
-                        />
+                        <Weather weatherAtLocation={result} />
                       ) : toolName === "displayFlightStatus" ? (
-                        <FlightStatus
-                          flightStatus={result}
-                        />
+                        <FlightStatus flightStatus={result} />
                       ) : toolName === "searchFlights" ? (
                         <ListFlights
                           chatId={chatId}
@@ -355,48 +226,26 @@ export const Message = ({
                           availability={result}
                         />
                       ) : toolName === "createReservation" ? (
-                        Object.keys(result).includes(
-                          "error",
-                        ) ? null : (
-                          <CreateReservation
-                            reservation={result}
-                          />
+                        Object.keys(result).includes("error") ? null : (
+                          <CreateReservation reservation={result} />
                         )
                       ) : toolName === "authorizePayment" ? (
-                        <AuthorizePayment
-                          intent={result}
-                        />
+                        <AuthorizePayment intent={result} />
                       ) : toolName === "displayBoardingPass" ? (
-                        <DisplayBoardingPass
-                          boardingPass={result}
-                        />
+                        <DisplayBoardingPass boardingPass={result} />
                       ) : toolName === "verifyPayment" ? (
-                        <VerifyPayment
-                          result={result}
-                        />
+                        <VerifyPayment result={result} />
                       ) : (
-                        <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-900">
-                          <pre>
-                            {JSON.stringify(
-                              result,
-                              null,
-                              2,
-                            )}
-                          </pre>
-                        </div>
+                        <pre className="overflow-x-auto rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs dark:border-zinc-800 dark:bg-zinc-900">
+                          {JSON.stringify(result, null, 2)}
+                        </pre>
                       )}
                     </div>
                   );
                 }
 
-                /*
-                 * Tool is currently running
-                 */
                 return (
-                  <div
-                    key={toolCallId}
-                    className="w-full"
-                  >
+                  <div key={toolCallId} className="skeleton">
                     {toolName === "getWeather" ? (
                       <Weather />
                     ) : toolName === "displayFlightStatus" ? (
