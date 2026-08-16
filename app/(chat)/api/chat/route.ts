@@ -39,9 +39,8 @@ export async function POST(request: Request) {
     const result = await streamText({
       model: geminiProModel,
 
-      system:
-        "You are a helpful AI assistant. Answer the user clearly and naturally.",
-
+      // No hardcoded project instructions.
+      // Gemini will follow the user's actual message.
       messages: coreMessages,
 
       onFinish: async ({ responseMessages }) => {
@@ -73,25 +72,6 @@ export async function POST(request: Request) {
     if (error instanceof Error) {
       console.error("Message:", error.message);
       console.error("Stack:", error.stack);
-
-      const errorMessage = error.message.toLowerCase();
-
-      if (
-        errorMessage.includes("quota") ||
-        errorMessage.includes("rate limit") ||
-        errorMessage.includes("too many requests") ||
-        errorMessage.includes("resource exhausted")
-      ) {
-        return new Response(
-          "Gemini API quota exceeded. Please try again later.",
-          {
-            status: 429,
-            headers: {
-              "Retry-After": "30",
-            },
-          },
-        );
-      }
     }
 
     return new Response("AI request failed", {
