@@ -34,15 +34,15 @@ export function Chat({
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
 
   return (
-    <div className="flex flex-row justify-center pb-4 md:pb-8 h-dvh bg-background">
-      <div className="flex flex-col justify-between items-center gap-4">
+    <div className="flex h-dvh flex-row justify-center bg-background pb-4 md:pb-8">
+      <div className="flex w-full flex-col items-center justify-between gap-4">
         <div
           ref={messagesContainerRef}
-          className="flex flex-col gap-4 h-full w-dvw items-center overflow-y-scroll"
+          className="flex h-full w-full flex-col items-center gap-4 overflow-y-auto"
         >
           {messages.length === 0 && <Overview />}
 
-          {messages.map((message) => (
+          {messages.map((message, index) => (
             <PreviewMessage
               key={message.id}
               chatId={id}
@@ -50,16 +50,33 @@ export function Chat({
               content={message.content}
               attachments={message.experimental_attachments}
               toolInvocations={message.toolInvocations}
+              isLoading={
+                isLoading &&
+                index === messages.length - 1 &&
+                message.role === "assistant"
+              }
             />
           ))}
 
+          {isLoading &&
+            (messages.length === 0 ||
+              messages[messages.length - 1]?.role === "user") && (
+              <PreviewMessage
+                chatId={id}
+                role="assistant"
+                content=""
+                toolInvocations={undefined}
+                isLoading
+              />
+            )}
+
           <div
             ref={messagesEndRef}
-            className="shrink-0 min-w-[24px] min-h-[24px]"
+            className="min-h-[24px] min-w-[24px] shrink-0"
           />
         </div>
 
-        <form className="flex flex-row gap-2 relative items-end w-full md:max-w-[500px] max-w-[calc(100dvw-32px) px-4 md:px-0">
+        <form className="relative flex w-full max-w-[calc(100dvw-32px)] flex-row items-end gap-2 px-0 md:max-w-[500px] md:px-0">
           <MultimodalInput
             input={input}
             setInput={setInput}
