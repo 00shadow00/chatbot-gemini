@@ -10,6 +10,7 @@ import { CreateReservation } from "../flights/create-reservation";
 import { FlightStatus } from "../flights/flight-status";
 import { ListFlights } from "../flights/list-flights";
 import { SelectSeats } from "../flights/select-seats";
+import { VerifyPayment } from "../flights/verify-payment";
 import { BotIcon, UserIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
 import { Weather } from "./weather";
@@ -58,7 +59,7 @@ export const Message = ({
           </div>
         </div>
 
-        {/* Message */}
+        {/* Message content */}
         <div
           className={`flex min-w-0 max-w-[85%] flex-col gap-2 md:max-w-[75%] ${
             isAssistant ? "items-start" : "items-end"
@@ -113,7 +114,7 @@ export const Message = ({
               </div>
             )}
 
-          {/* Text message */}
+          {/* Normal message */}
           {typeof content === "string" && content.length > 0 && (
             <div
               className={`whitespace-pre-wrap break-words text-sm leading-6 sm:text-[15px] ${
@@ -156,7 +157,10 @@ export const Message = ({
                       ) : toolName === "searchFlights" ? (
                         <ListFlights chatId={chatId} results={result} />
                       ) : toolName === "selectSeats" ? (
-                        <SelectSeats chatId={chatId} availability={result} />
+                        <SelectSeats
+                          chatId={chatId}
+                          availability={result}
+                        />
                       ) : toolName === "createReservation" ? (
                         Object.keys(result).includes("error") ? null : (
                           <CreateReservation reservation={result} />
