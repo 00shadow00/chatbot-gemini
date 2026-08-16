@@ -30,7 +30,6 @@ export function Chat({
     body: { id },
     initialMessages,
     maxSteps: 10,
-
     onFinish: () => {
       window.history.replaceState({}, "", `/chat/${id}`);
     },
@@ -42,15 +41,15 @@ export function Chat({
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
 
   return (
-    <div className="flex h-dvh flex-row justify-center bg-background pb-4 md:pb-8">
-      <div className="flex min-w-0 flex-col items-center justify-between gap-4">
+    <div className="flex flex-row justify-center pb-4 md:pb-8 h-dvh bg-background">
+      <div className="flex flex-col justify-between items-center gap-4">
         <div
           ref={messagesContainerRef}
-          className="flex size-full flex-col items-center gap-5 overflow-y-scroll"
+          className="flex flex-col gap-4 h-full w-dvw items-center overflow-y-scroll"
         >
           {messages.length === 0 && <Overview />}
 
-          {messages.map((message, index) => (
+          {messages.map((message) => (
             <PreviewMessage
               key={message.id}
               chatId={id}
@@ -58,48 +57,16 @@ export function Chat({
               content={message.content}
               attachments={message.experimental_attachments}
               toolInvocations={message.toolInvocations}
-              isLoading={
-                isLoading &&
-                index === messages.length - 1 &&
-                message.role === "assistant"
-              }
             />
           ))}
 
-          {/* Typing indicator kapag wala pang assistant message */}
-          {isLoading &&
-            (messages.length === 0 ||
-              messages[messages.length - 1]?.role === "user") && (
-              <div className="w-full px-4 md:w-[700px] md:px-0">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-900">
-                    <span className="text-xs">AI</span>
-                  </div>
-
-                  <div className="rounded-2xl rounded-tl-md border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/70">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-zinc-400">
-                        AI is thinking
-                      </span>
-
-                      <span className="flex gap-1">
-                        <span className="size-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
-                        <span className="size-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
-                        <span className="size-1.5 animate-bounce rounded-full bg-zinc-400" />
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
           <div
             ref={messagesEndRef}
-            className="min-h-[24px] min-w-[24px] shrink-0"
+            className="shrink-0 min-w-[24px] min-h-[24px]"
           />
         </div>
 
-        <form className="relative flex w-full max-w-[calc(100dvw-32px)] flex-row items-end gap-2 px-0 md:max-w-[700px]">
+        <form className="flex flex-row gap-2 relative items-end w-full md:max-w-[500px] max-w-[calc(100dvw-32px) px-4 md:px-0">
           <MultimodalInput
             input={input}
             setInput={setInput}
