@@ -23,7 +23,6 @@ export async function POST(request: Request) {
       });
     }
 
-    // TypeScript-safe user ID
     const userId = session.user.id;
 
     const coreMessages = convertToCoreMessages(messages).filter(
@@ -74,6 +73,25 @@ export async function POST(request: Request) {
     if (error instanceof Error) {
       console.error("Message:", error.message);
       console.error("Stack:", error.stack);
+
+      const errorMessage = error.message.toLowerCase();
+
+      if (
+        errorMessage.includes("quota") ||
+        errorMessage.includes("rate limit") ||
+        errorMessage.includes("too many requests") ||
+        errorMessage.includes("resource exhausted")
+      ) {
+        return new Response(
+          "Gemini API quota exceeded. Please try again later.",
+          {
+            status: 429,
+            headers: {
+              "Retry-After": "30",
+            },
+          },
+        );
+      }
     }
 
     return new Response("AI request failed", {
