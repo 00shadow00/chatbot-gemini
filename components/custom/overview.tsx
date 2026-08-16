@@ -39,6 +39,7 @@ export const Overview = () => {
             className="text-blue-500 dark:text-blue-400"
             href="https://sdk.vercel.ai/docs"
             target="_blank"
+            rel="noopener noreferrer"
           >
             Docs
           </Link>
