@@ -2,7 +2,7 @@
 
 import { Attachment, ToolInvocation } from "ai";
 import { motion } from "framer-motion";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 
 import { BotIcon, UserIcon } from "./icons";
 import { PreviewAttachment } from "./preview-attachment";
@@ -14,6 +14,169 @@ import { FlightStatus } from "../flights/flight-status";
 import { ListFlights } from "../flights/list-flights";
 import { SelectSeats } from "../flights/select-seats";
 import { VerifyPayment } from "../flights/verify-payment";
+
+type ContentPart = {
+  type: "text" | "code";
+  content: string;
+  language?: string;
+};
+
+function parseContent(content: string): ContentPart[] {
+  const parts: ContentPart[] = [];
+
+  const codeBlockRegex = /```([a-zA-Z0-9_+#.-]*)\n?([\s\S]*?)```/g;
+
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    const textBefore = content.slice(lastIndex, match.index);
+
+    if (textBefore) {
+      parts.push({
+        type: "text",
+        content: textBefore,
+      });
+    }
+
+    parts.push({
+      type: "code",
+      language: match[1] || "code",
+      content: match[2].replace(/\n$/, ""),
+    });
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  const remainingText = content.slice(lastIndex);
+
+  if (remainingText) {
+    parts.push({
+      type: "text",
+      content: remainingText,
+    });
+  }
+
+  return parts;
+}
+
+function CodeBlock({
+  code,
+  language,
+}: {
+  code: string;
+  language?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+
+      setCopied(true);
+
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Failed to copy code:", error);
+    }
+  };
+
+  const displayLanguage = language?.trim() || "code";
+
+  return (
+    <div className="my-3 w-full overflow-hidden rounded-xl border border-zinc-200 bg-zinc-950 shadow-sm dark:border-zinc-800">
+      {/* Code header */}
+      <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-3 py-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+          {displayLanguage}
+        </span>
+
+        <button
+          type="button"
+          onClick={copyCode}
+          className="flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700 hover:text-white"
+          aria-label="Copy code"
+        >
+          {copied ? (
+            <>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="size-3.5"
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+
+              Copied!
+            </>
+          ) : (
+            <>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="size-3.5"
+              >
+                <rect
+                  width="13"
+                  height="13"
+                  x="9"
+                  y="9"
+                  rx="2"
+                  ry="2"
+                />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+
+              Copy
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Code */}
+      <pre className="m-0 max-h-[600px] overflow-x-auto overflow-y-auto p-4 text-[13px] leading-6 text-zinc-100">
+        <code className="font-mono">{code}</code>
+      </pre>
+    </div>
+  );
+}
+
+function MessageContent({ content }: { content: string }) {
+  const parts = parseContent(content);
+
+  return (
+    <div className="min-w-0">
+      {parts.map((part, index) => {
+        if (part.type === "code") {
+          return (
+            <CodeBlock
+              key={`code-${index}`}
+              code={part.content}
+              language={part.language}
+            />
+          );
+        }
+
+        return (
+          <div
+            key={`text-${index}`}
+            className="whitespace-pre-wrap break-words"
+          >
+            {part.content}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export const Message = ({
   chatId,
@@ -65,7 +228,7 @@ export const Message = ({
             {isAssistant ? <BotIcon /> : <UserIcon />}
           </div>
 
-          {/* Message content */}
+          {/* Message */}
           <div
             className={`flex min-w-0 flex-col gap-2 ${
               isUser ? "items-end" : "items-start"
@@ -73,17 +236,21 @@ export const Message = ({
           >
             {typeof content === "string" && content.length > 0 && (
               <div
-                className={`break-words whitespace-pre-wrap text-sm leading-6 ${
+                className={`break-words text-sm leading-6 ${
                   isUser
                     ? "rounded-2xl rounded-tr-md bg-blue-600 px-4 py-3 text-white shadow-sm dark:bg-blue-600"
-                    : "rounded-2xl rounded-tl-md border border-zinc-200 bg-white px-4 py-3 text-zinc-800 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
+                    : "w-full rounded-2xl rounded-tl-md border border-zinc-200 bg-white px-4 py-3 text-zinc-800 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
                 }`}
               >
-                {content}
+                {isAssistant ? (
+                  <MessageContent content={content} />
+                ) : (
+                  <div className="whitespace-pre-wrap">{content}</div>
+                )}
               </div>
             )}
 
-            {/* AI loading indicator */}
+            {/* AI typing indicator */}
             {isAssistant && isLoading && !content && (
               <div className="rounded-2xl rounded-tl-md border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="flex items-center gap-1.5">
