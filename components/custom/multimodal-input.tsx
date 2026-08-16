@@ -1,12 +1,17 @@
 "use client";
 
-import { Attachment, ChatRequestOptions, CreateMessage, Message } from "ai";
+import {
+  Attachment,
+  ChatRequestOptions,
+  CreateMessage,
+  Message,
+} from "ai";
 import { motion } from "framer-motion";
 import React, {
-  useRef,
-  useEffect,
-  useState,
   useCallback,
+  useEffect,
+  useRef,
+  useState,
   Dispatch,
   SetStateAction,
   ChangeEvent,
@@ -18,19 +23,6 @@ import { PreviewAttachment } from "./preview-attachment";
 import useWindowSize from "./use-window-size";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
-
-const suggestedActions = [
-  {
-    title: "Help me book a flight",
-    label: "from San Francisco to London",
-    action: "Help me book a flight from San Francisco to London",
-  },
-  {
-    title: "What is the status",
-    label: "of flight BA142 flying tmrw?",
-    action: "What is the status of flight BA142 flying tmrw?",
-  },
-];
 
 export function MultimodalInput({
   input,
@@ -62,212 +54,589 @@ export function MultimodalInput({
   ) => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const { width } = useWindowSize();
 
-  useEffect(() => {
-    if (textareaRef.current) {
-      adjustHeight();
-    }
-  }, []);
-
-  const adjustHeight = () => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight + 0}px`;
-    }
-  };
-
-  const handleInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(event.target.value);
-    adjustHeight();
-  };
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
 
+  /*
+  |--------------------------------------------------------------------------
+  | Auto resize textarea
+  |--------------------------------------------------------------------------
+  */
+
+  const adjustHeight = useCallback(() => {
+    if (!textareaRef.current) {
+      return;
+    }
+
+    textareaRef.current.style.height = "auto";
+
+    const maxHeight = 180;
+    const newHeight = Math.min(
+      textareaRef.current.scrollHeight,
+      maxHeight,
+    );
+
+    textareaRef.current.style.height = `${newHeight}px`;
+  }, []);
+
+  useEffect(() => {
+    adjustHeight();
+  }, [input, adjustHeight]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Input change
+  |--------------------------------------------------------------------------
+  */
+
+  const handleInput = (
+    event: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    setInput(event.target.value);
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Submit
+  |--------------------------------------------------------------------------
+  */
+
   const submitForm = useCallback(() => {
+    const trimmedInput = input.trim();
+
+    if (
+      !trimmedInput &&
+      attachments.length === 0
+    ) {
+      return;
+    }
+
     handleSubmit(undefined, {
       experimental_attachments: attachments,
     });
 
     setAttachments([]);
 
-    if (width && width > 768) {
-      textareaRef.current?.focus();
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
     }
-  }, [attachments, handleSubmit, setAttachments, width]);
+
+    if (width && width > 768) {
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 50);
+    }
+  }, [
+    input,
+    attachments,
+    handleSubmit,
+    setAttachments,
+    width,
+  ]);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Upload file
+  |--------------------------------------------------------------------------
+  */
 
   const uploadFile = async (file: File) => {
     const formData = new FormData();
+
     formData.append("file", file);
 
     try {
-      const response = await fetch(`/api/files/upload`, {
+      const response = await fetch("/api/files/upload", {
         method: "POST",
         body: formData,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const { url, pathname, contentType } = data;
+      if (!response.ok) {
+        let errorMessage = "Failed to upload file.";
 
-        return {
-          url,
-          name: pathname,
-          contentType: contentType,
-        };
-      } else {
-        const { error } = await response.json();
-        toast.error(error);
+        try {
+          const data = await response.json();
+
+          if (data?.error) {
+            errorMessage = data.error;
+          }
+        } catch {
+          // Ignore JSON parsing errors.
+        }
+
+        toast.error(errorMessage);
+
+        return undefined;
       }
+
+      const data = await response.json();
+
+      const {
+        url,
+        pathname,
+        contentType,
+      } = data;
+
+      return {
+        url,
+        name: pathname,
+        contentType,
+      };
     } catch (error) {
-      toast.error("Failed to upload file, please try again!");
+      console.error("File upload error:", error);
+
+      toast.error(
+        "Failed to upload file. Please try again.",
+      );
+
+      return undefined;
     }
   };
 
-  const handleFileChange = useCallback(
-    async (event: ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files || []);
+  /*
+  |--------------------------------------------------------------------------
+  | File change
+  |--------------------------------------------------------------------------
+  */
 
-      setUploadQueue(files.map((file) => file.name));
+  const handleFileChange = useCallback(
+    async (
+      event: ChangeEvent<HTMLInputElement>,
+    ) => {
+      const files = Array.from(
+        event.target.files || [],
+      );
+
+      if (files.length === 0) {
+        return;
+      }
+
+      setUploadQueue(
+        files.map((file) => file.name),
+      );
 
       try {
-        const uploadPromises = files.map((file) => uploadFile(file));
-        const uploadedAttachments = await Promise.all(uploadPromises);
-        const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) => attachment !== undefined,
+        const uploadedAttachments =
+          await Promise.all(
+            files.map((file) =>
+              uploadFile(file),
+            ),
+          );
+
+        const successfulAttachments =
+          uploadedAttachments.filter(
+            (
+              attachment,
+            ): attachment is {
+              url: string;
+              name: string;
+              contentType: string;
+            } => attachment !== undefined,
+          );
+
+        if (
+          successfulAttachments.length > 0
+        ) {
+          setAttachments(
+            (currentAttachments) => [
+              ...currentAttachments,
+              ...successfulAttachments,
+            ],
+          );
+        }
+      } catch (error) {
+        console.error(
+          "Error uploading files:",
+          error,
         );
 
-        setAttachments((currentAttachments) => [
-          ...currentAttachments,
-          ...successfullyUploadedAttachments,
-        ]);
-      } catch (error) {
-        console.error("Error uploading files!", error);
+        toast.error(
+          "Some files could not be uploaded.",
+        );
       } finally {
         setUploadQueue([]);
+
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
       }
     },
     [setAttachments],
   );
 
+  /*
+  |--------------------------------------------------------------------------
+  | Keyboard shortcuts
+  |--------------------------------------------------------------------------
+  */
+
+  const handleKeyDown = (
+    event: React.KeyboardEvent<HTMLTextAreaElement>,
+  ) => {
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+
+      if (isLoading) {
+        toast.error(
+          "Please wait for the AI to finish.",
+        );
+
+        return;
+      }
+
+      submitForm();
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Empty state
+  |--------------------------------------------------------------------------
+  */
+
+  const showWelcome =
+    messages.length === 0 &&
+    attachments.length === 0 &&
+    uploadQueue.length === 0;
+
   return (
-    <div className="relative w-full flex flex-col gap-4">
-      {messages.length === 0 &&
-        attachments.length === 0 &&
-        uploadQueue.length === 0 && (
-          <div className="grid sm:grid-cols-2 gap-4 w-full md:px-0 mx-auto md:max-w-[500px]">
-            {suggestedActions.map((suggestedAction, index) => (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                transition={{ delay: 0.05 * index }}
-                key={index}
-                className={index > 1 ? "hidden sm:block" : "block"}
-              >
-                <button
-                  onClick={async () => {
-                    append({
-                      role: "user",
-                      content: suggestedAction.action,
-                    });
-                  }}
-                  className="border-none bg-muted/50 w-full text-left border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-300 rounded-lg p-3 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex flex-col"
-                >
-                  <span className="font-medium">{suggestedAction.title}</span>
-                  <span className="text-zinc-500 dark:text-zinc-400">
-                    {suggestedAction.label}
-                  </span>
-                </button>
-              </motion.div>
-            ))}
+    <div className="relative flex w-full flex-col gap-3">
+      {/*
+      |--------------------------------------------------------------------------
+      | Welcome message
+      |--------------------------------------------------------------------------
+      */}
+
+      {showWelcome && (
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 10,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            duration: 0.3,
+          }}
+          className="mb-1 flex flex-col items-center justify-center px-4 pb-1 text-center"
+        >
+          <div className="mb-3 flex size-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <span className="text-xl">
+              ✨
+            </span>
           </div>
-        )}
+
+          <h2 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+            How can I help you?
+          </h2>
+
+          <p className="mt-1 max-w-[360px] text-sm text-zinc-500 dark:text-zinc-400">
+            Ask me anything, explain a topic,
+            solve a problem, or help you get
+            something done.
+          </p>
+        </motion.div>
+      )}
+
+      {/*
+      |--------------------------------------------------------------------------
+      | Hidden file input
+      |--------------------------------------------------------------------------
+      */}
 
       <input
         type="file"
-        className="fixed -top-4 -left-4 size-0.5 opacity-0 pointer-events-none"
         ref={fileInputRef}
         multiple
         onChange={handleFileChange}
         tabIndex={-1}
+        className="pointer-events-none fixed -left-4 -top-4 size-0.5 opacity-0"
       />
 
-      {(attachments.length > 0 || uploadQueue.length > 0) && (
-        <div className="flex flex-row gap-2 overflow-x-scroll">
-          {attachments.map((attachment) => (
-            <PreviewAttachment key={attachment.url} attachment={attachment} />
-          ))}
+      {/*
+      |--------------------------------------------------------------------------
+      | Attachments preview
+      |--------------------------------------------------------------------------
+      */}
 
-          {uploadQueue.map((filename) => (
-            <PreviewAttachment
-              key={filename}
-              attachment={{
-                url: "",
-                name: filename,
-                contentType: "",
-              }}
-              isUploading={true}
-            />
-          ))}
-        </div>
+      {(attachments.length > 0 ||
+        uploadQueue.length > 0) && (
+        <motion.div
+          initial={{
+            opacity: 0,
+            height: 0,
+          }}
+          animate={{
+            opacity: 1,
+            height: "auto",
+          }}
+          className="flex w-full flex-row gap-2 overflow-x-auto px-1 pb-1"
+        >
+          {attachments.map(
+            (attachment) => (
+              <PreviewAttachment
+                key={attachment.url}
+                attachment={attachment}
+              />
+            ),
+          )}
+
+          {uploadQueue.map(
+            (filename) => (
+              <PreviewAttachment
+                key={filename}
+                attachment={{
+                  url: "",
+                  name: filename,
+                  contentType: "",
+                }}
+                isUploading={true}
+              />
+            ),
+          )}
+        </motion.div>
       )}
 
-      <Textarea
-        ref={textareaRef}
-        placeholder="Send a message..."
-        value={input}
-        onChange={handleInput}
-        className="min-h-[24px] overflow-hidden resize-none rounded-lg text-base bg-muted border-none"
-        rows={3}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
+      {/*
+      |--------------------------------------------------------------------------
+      | Input container
+      |--------------------------------------------------------------------------
+      */}
 
-            if (isLoading) {
-              toast.error("Please wait for the model to finish its response!");
-            } else {
-              submitForm();
-            }
-          }
-        }}
-      />
-
-      {isLoading ? (
-        <Button
-          className="rounded-full p-1.5 h-fit absolute bottom-2 right-2 m-0.5 text-white"
-          onClick={(event) => {
-            event.preventDefault();
-            stop();
-          }}
-        >
-          <StopIcon size={14} />
-        </Button>
-      ) : (
-        <Button
-          className="rounded-full p-1.5 h-fit absolute bottom-2 right-2 m-0.5 text-white"
-          onClick={(event) => {
-            event.preventDefault();
-            submitForm();
-          }}
-          disabled={input.length === 0 || uploadQueue.length > 0}
-        >
-          <ArrowUpIcon size={14} />
-        </Button>
-      )}
-
-      <Button
-        className="rounded-full p-1.5 h-fit absolute bottom-2 right-10 m-0.5 dark:border-zinc-700"
-        onClick={(event) => {
-          event.preventDefault();
-          fileInputRef.current?.click();
-        }}
-        variant="outline"
-        disabled={isLoading}
+      <div
+        className="
+          relative
+          flex
+          w-full
+          items-end
+          rounded-2xl
+          border
+          border-zinc-200
+          bg-white
+          p-2
+          shadow-sm
+          transition-all
+          focus-within:border-zinc-300
+          focus-within:shadow-md
+          dark:border-zinc-800
+          dark:bg-zinc-900
+          dark:focus-within:border-zinc-700
+        "
       >
-        <PaperclipIcon size={14} />
-      </Button>
+        <Textarea
+          ref={textareaRef}
+          value={input}
+          onChange={handleInput}
+          onKeyDown={handleKeyDown}
+          placeholder={
+            isLoading
+              ? "AI is thinking..."
+              : "Message Gemini..."
+          }
+          disabled={isLoading}
+          rows={1}
+          className="
+            min-h-[44px]
+            max-h-[180px]
+            flex-1
+            resize-none
+            overflow-y-auto
+            border-none
+            bg-transparent
+            px-3
+            py-3
+            pr-24
+            text-base
+            shadow-none
+            outline-none
+            focus-visible:ring-0
+            focus-visible:ring-offset-0
+            dark:bg-transparent
+          "
+        />
+
+        {/*
+        |--------------------------------------------------------------------------
+        | Attachment button
+        |--------------------------------------------------------------------------
+        */}
+
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={
+            isLoading ||
+            uploadQueue.length > 0
+          }
+          onClick={() => {
+            fileInputRef.current?.click();
+          }}
+          className="
+            absolute
+            bottom-2
+            left-2
+            size-9
+            rounded-full
+            p-0
+            text-zinc-500
+            hover:bg-zinc-100
+            hover:text-zinc-900
+            dark:text-zinc-400
+            dark:hover:bg-zinc-800
+            dark:hover:text-zinc-100
+          "
+          title="Attach file"
+        >
+          <PaperclipIcon size={17} />
+        </Button>
+
+        {/*
+        |--------------------------------------------------------------------------
+        | Send / Stop button
+        |--------------------------------------------------------------------------
+        */}
+
+        {isLoading ? (
+          <Button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              stop();
+            }}
+            className="
+              absolute
+              bottom-2
+              right-2
+              size-9
+              rounded-full
+              bg-zinc-900
+              p-0
+              text-white
+              hover:bg-zinc-700
+              dark:bg-zinc-100
+              dark:text-zinc-900
+              dark:hover:bg-zinc-300
+            "
+            title="Stop generating"
+          >
+            <StopIcon size={15} />
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              submitForm();
+            }}
+            disabled={
+              (input.trim().length === 0 &&
+                attachments.length === 0) ||
+              uploadQueue.length > 0
+            }
+            className="
+              absolute
+              bottom-2
+              right-2
+              size-9
+              rounded-full
+              bg-zinc-900
+              p-0
+              text-white
+              hover:bg-zinc-700
+              disabled:cursor-not-allowed
+              disabled:opacity-40
+              dark:bg-zinc-100
+              dark:text-zinc-900
+              dark:hover:bg-zinc-300
+            "
+            title="Send message"
+          >
+            <ArrowUpIcon size={16} />
+          </Button>
+        )}
+      </div>
+
+      {/*
+      |--------------------------------------------------------------------------
+      | Loading indicator
+      |--------------------------------------------------------------------------
+      */}
+
+      {isLoading && (
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 4,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          className="flex items-center gap-2 px-2 text-xs text-zinc-500 dark:text-zinc-400"
+        >
+          <span>Gemini is thinking</span>
+
+          <span className="flex items-center gap-1">
+            <motion.span
+              animate={{
+                opacity: [0.3, 1, 0.3],
+              }}
+              transition={{
+                duration: 1,
+                repeat: Infinity,
+                delay: 0,
+              }}
+              className="size-1.5 rounded-full bg-current"
+            />
+
+            <motion.span
+              animate={{
+                opacity: [0.3, 1, 0.3],
+              }}
+              transition={{
+                duration: 1,
+                repeat: Infinity,
+                delay: 0.15,
+              }}
+              className="size-1.5 rounded-full bg-current"
+            />
+
+            <motion.span
+              animate={{
+                opacity: [0.3, 1, 0.3],
+              }}
+              transition={{
+                duration: 1,
+                repeat: Infinity,
+                delay: 0.3,
+              }}
+              className="size-1.5 rounded-full bg-current"
+            />
+          </span>
+        </motion.div>
+      )}
+
+      {/*
+      |--------------------------------------------------------------------------
+      | Hint
+      |--------------------------------------------------------------------------
+      */}
+
+      {!isLoading &&
+        messages.length === 0 && (
+          <p className="text-center text-[11px] text-zinc-400 dark:text-zinc-500">
+            Press Enter to send · Shift + Enter
+            for a new line
+          </p>
+        )}
     </div>
   );
 }
