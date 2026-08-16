@@ -4,6 +4,9 @@ import { Attachment, ToolInvocation } from "ai";
 import { motion } from "framer-motion";
 import { ReactNode } from "react";
 
+import { BotIcon, UserIcon } from "./icons";
+import { PreviewAttachment } from "./preview-attachment";
+import { Weather } from "./weather";
 import { AuthorizePayment } from "../flights/authorize-payment";
 import { DisplayBoardingPass } from "../flights/boarding-pass";
 import { CreateReservation } from "../flights/create-reservation";
@@ -11,9 +14,6 @@ import { FlightStatus } from "../flights/flight-status";
 import { ListFlights } from "../flights/list-flights";
 import { SelectSeats } from "../flights/select-seats";
 import { VerifyPayment } from "../flights/verify-payment";
-import { BotIcon, UserIcon } from "./icons";
-import { PreviewAttachment } from "./preview-attachment";
-import { Weather } from "./weather";
 
 export const Message = ({
   chatId,
@@ -46,7 +46,6 @@ export const Message = ({
           isAssistant ? "flex-row" : "flex-row-reverse"
         }`}
       >
-        {/* Avatar */}
         <div className="shrink-0">
           <div
             className={`flex size-8 items-center justify-center rounded-full border ${
@@ -59,13 +58,11 @@ export const Message = ({
           </div>
         </div>
 
-        {/* Message content */}
         <div
           className={`flex min-w-0 max-w-[85%] flex-col gap-2 md:max-w-[75%] ${
             isAssistant ? "items-start" : "items-end"
           }`}
         >
-          {/* AI typing indicator */}
           {isAssistant &&
             isLoading &&
             typeof content === "string" &&
@@ -114,7 +111,6 @@ export const Message = ({
               </div>
             )}
 
-          {/* Normal message */}
           {typeof content === "string" && content.length > 0 && (
             <div
               className={`whitespace-pre-wrap break-words text-sm leading-6 sm:text-[15px] ${
@@ -127,7 +123,6 @@ export const Message = ({
             </div>
           )}
 
-          {/* Attachments */}
           {attachments && attachments.length > 0 && (
             <div className="flex flex-row flex-wrap justify-end gap-2">
               {attachments.map((attachment) => (
@@ -139,7 +134,6 @@ export const Message = ({
             </div>
           )}
 
-          {/* Tool invocations */}
           {toolInvocations && toolInvocations.length > 0 && (
             <div className="flex w-full flex-col gap-4">
               {toolInvocations.map((toolInvocation) => {
